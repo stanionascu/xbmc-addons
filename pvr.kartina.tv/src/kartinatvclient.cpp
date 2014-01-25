@@ -82,11 +82,11 @@ KTVError checkForError(const char *buffer)
     KTVError error;
     json_object *obj = json_tokener_parse(buffer);
     if (obj) {
-         json_object *jError = json_object_object_get(obj, "error");
-         if (jError) {
-             error.code = intFromJsonObject(jError, "code");
-             error.message = stringFromJsonObject(jError, "message");
-         }
+        json_object *jError = json_object_object_get(obj, "error");
+        if (jError) {
+            error.code = intFromJsonObject(jError, "code");
+            error.message = stringFromJsonObject(jError, "message");
+        }
     }
     return error;
 }
@@ -136,7 +136,7 @@ int waitForSocket(curl_socket_t socket, long msecs, bool receive)
 }
 
 KartinaTVClient::KartinaTVClient(ADDON::CHelper_libXBMC_addon *XBMC, CHelper_libXBMC_pvr *PVR) :
-	XBMC(XBMC), PVR(PVR), curl(0), streamCurl(0), streamSocket(), lastEpgQuery(0, 0)
+    XBMC(XBMC), PVR(PVR), curl(0), streamCurl(0), streamSocket(), lastEpgQuery(0, 0)
 {
 }
 
@@ -182,23 +182,23 @@ bool KartinaTVClient::loadChannelsFromCache(ADDON_HANDLE handle, bool bRadio)
 
 bool KartinaTVClient::loadEpgFromCache(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t start, time_t end)
 {
- //   XBMC->Log(ADDON::LOG_NOTICE, "KartinaTVClient::loadEpgFromCache for channel: %d (has: %d)", channel.iChannelNumber,
-//		channelEpgCache.count(channel.iChannelNumber));
+//    XBMC->Log(ADDON::LOG_NOTICE, "KartinaTVClient::loadEpgFromCache for channel: %d (has: %d)", channel.iChannelNumber,
+//              channelEpgCache.count(channel.iChannelNumber));
 
-	if (lastEpgQuery != std::make_pair(start, end)) {
-		updateChannelEpg(start - 3600*3, (end - start)/3600 + 3);
-		lastEpgQuery = std::make_pair(start, end);
-	}
+    if (lastEpgQuery != std::make_pair(start, end)) {
+        updateChannelEpg(start + 3600 * 18, (end - start)/3600 + 3);
+        lastEpgQuery = std::make_pair(start, end);
+    }
 
     XBMC->Log(ADDON::LOG_NOTICE, "KartinaTVClient::loadEpgFromCache");
 
-	if (channelEpgCache.count(channel.iUniqueId) > 0) {
-		const std::list<EPG_TAG*> &epg = channelEpgCache.at(channel.iUniqueId);
-		std::list<EPG_TAG*>::const_iterator it = epg.begin();
-		for (; it != epg.end(); ++it) {
-			PVR->TransferEpgEntry(handle, *it);
-		}
-	}
+    if (channelEpgCache.count(channel.iUniqueId) > 0) {
+        const std::list<EPG_TAG*> &epg = channelEpgCache.at(channel.iUniqueId);
+        std::list<EPG_TAG*>::const_iterator it = epg.begin();
+        for (; it != epg.end(); ++it) {
+            PVR->TransferEpgEntry(handle, *it);
+        }
+    }
     return true;
 }
 
@@ -242,7 +242,7 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
 
 void KartinaTVClient::setUserProfilePath(const std::string &path)
 {
-	userPath = path;
+    userPath = path;
 }
 
 bool KartinaTVClient::login(const std::string &user, const std::string &pass)
@@ -321,13 +321,13 @@ void KartinaTVClient::updateChannelList()
                     pvrChannel->bIsRadio = !(intFromJsonObject(channel, "is_video") == 1);
                     pvrChannel->iChannelNumber = channelsCache.size();
                     pvrChannel->iUniqueId = channelId;
-					std::string icon = std::string("http://iptv.kartina.tv") + XBMC->UnknownToUTF8(stringFromJsonObject(channel, "icon"));
+                    std::string icon = std::string("http://iptv.kartina.tv") + XBMC->UnknownToUTF8(stringFromJsonObject(channel, "icon"));
                     std::ostringstream sStreamURL;
                     sStreamURL << "pvr://stream/tv/" << channelId << ".ts";
                     strcpy(pvrChannel->strStreamURL, XBMC->UnknownToUTF8(sStreamURL.str().data()));
                     strcpy(pvrChannel->strChannelName, XBMC->UnknownToUTF8(channelName));
-					strcpy(pvrChannel->strIconPath, icon.data());
-					channelsCache.push_back(pvrChannel);
+                    strcpy(pvrChannel->strIconPath, icon.data());
+                    channelsCache.push_back(pvrChannel);
 
                     PVR_CHANNEL_GROUP_MEMBER *pvrChannelGroupMember = new PVR_CHANNEL_GROUP_MEMBER;
                     memset(pvrChannelGroupMember, 0, sizeof(PVR_CHANNEL_GROUP_MEMBER));
@@ -359,6 +359,7 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
     channelEpgCache.clear();
 
     KTVError ktvError;
+
     if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
         json_object *obj = json_tokener_parse(reply.buffer);
         array_list *epg3 = arrayFromJsonObject(obj, "epg3");
@@ -370,6 +371,7 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
                 channelEpgCache.insert(std::make_pair(channelId, std::list<EPG_TAG*>()));
 
             json_object *epg = json_object_object_get(channelEpg, "epg");
+            EPG_TAG *lastEntry = NULL;
             if (epg) {
                 array_list *epgList = json_object_get_array(epg);
                 for (int j = 0; j < array_list_length(epgList); ++j) {
@@ -379,37 +381,46 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
                     memset(tag, 0, sizeof(EPG_TAG));
                     tag->iChannelNumber = channelId;
                     tag->iUniqueBroadcastId = channelId * 10000 + j;
-                    tag->startTime = intFromJsonObject(program, "ut_start");
-                    tag->endTime = tag->startTime + 1;
+                    tag->firstAired = 0;
+                    if (lastEntry == NULL)
+                        tag->startTime = start + 1;
+                    else
+                        tag->startTime = intFromJsonObject(program, "ut_start");
+                    tag->endTime = tag->startTime + 300;
+                    if (lastEntry != NULL)
+                        lastEntry->endTime = tag->startTime;
                     std::string longTitle = XBMC->UnknownToUTF8(stringFromJsonObject(program, "progname"));
-					// XBMC->Log(ADDON::LOG_NOTICE, "Adding for channel %s program %s", channelName, longTitle.data());
-					std::istringstream titleStream(longTitle);
-					std::vector<std::string> titleLines;
-					while (!titleStream.eof()) {
-						std::string line;
-						std::getline(titleStream, line);
-						titleLines.push_back(line);
-					}
+                    std::istringstream titleStream(longTitle);
+                    std::vector<std::string> titleLines;
+                    while (!titleStream.eof()) {
+                        std::string line;
+                        std::getline(titleStream, line);
+                        titleLines.push_back(line);
+                    }
 
-					std::string title, plot;
+                    std::string title, plot;
 
-					if (titleLines.size() > 0)
-						title = titleLines.at(0);
-					else
-						title = longTitle;
+                    if (titleLines.size() > 0)
+                        title = titleLines.at(0);
+                    else
+                        title = longTitle;
 
-					if (titleLines.size() > 1) {
-						for (unsigned int i = 1; i < titleLines.size(); ++i) {
-							plot += " " + titleLines.at(i);
-						}
-					}
+                    if (titleLines.size() > 1) {
+                        for (unsigned int i = 1; i < titleLines.size(); ++i) {
+                            plot += " " + titleLines.at(i);
+                        }
+                    }
 
-					tag->strTitle = XBMC->UnknownToUTF8(title.data());
-					tag->strPlot = XBMC->UnknownToUTF8(plot.data());
+                    tag->strTitle = XBMC->UnknownToUTF8(title.data());
+                    tag->strPlot = XBMC->UnknownToUTF8(plot.data());
 
                     channelEpgCache.at(channelId).push_back(tag);
+                    lastEntry = tag;
                 }
             }
+
+            if (lastEntry)
+                lastEntry->endTime = lastEntry->startTime + 600;
         }
     } else {
         XBMC->Log(ADDON::LOG_ERROR, "Error occured: code %d %s", ktvError.code, ktvError.message.c_str());
@@ -438,10 +449,10 @@ KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunc
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteToMemory);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&reply);
 
-	std::string cookiesPath = userPath + "cookies.txt";
-	XBMC->Log(ADDON::LOG_ERROR, "User path for cookies: %s", cookiesPath.data());
-	curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cookiesPath.data());
-	curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookiesPath.data());
+    std::string cookiesPath = userPath + "cookies.txt";
+    XBMC->Log(ADDON::LOG_ERROR, "User path for cookies: %s", cookiesPath.data());
+    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cookiesPath.data());
+    curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookiesPath.data());
 
     const std::string postFields = stringifyPostFields(parameters);
 
@@ -451,14 +462,14 @@ KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunc
     CURLcode result = curl_easy_perform(curl);
 
     XBMC->Log(ADDON::LOG_NOTICE, "void KartinaTVClient::makeRequest()");
-	if (result == CURLE_OK) {
-		char *data = XBMC->UnknownToUTF8(reply.buffer);
-		FILE *f = fopen((userPath + "msg_dump.txt").data(), "a+");
-		fprintf(f, "reply: %s\r\n", data);
-		fclose(f);
-		XBMC->FreeString(data);
-		return reply;
-	}
+    if (result == CURLE_OK) {
+        char *data = XBMC->UnknownToUTF8(reply.buffer);
+        FILE *f = fopen((userPath + "msg_dump.txt").data(), "a+");
+        fprintf(f, "reply: %s\r\n", data);
+        fclose(f);
+        XBMC->FreeString(data);
+        return reply;
+    }
 
     return CurlMemoryBlob();
 }
