@@ -56,7 +56,7 @@ public:
     KartinaTVClient(ADDON::CHelper_libXBMC_addon *XBMC, CHelper_libXBMC_pvr *PVR);
     virtual ~KartinaTVClient();
 
-	void setUserProfilePath(const std::string &path);
+    void setUserProfilePath(const std::string &path);
 
     bool login(const std::string &user, const std::string &pass);
     void logout();
@@ -100,9 +100,9 @@ private:
     std::list<PVR_CHANNEL_GROUP_MEMBER*> channelGroupMembersCache;
     std::map<int, std::list<EPG_TAG*> > channelEpgCache;
 
-	std::pair<time_t, time_t> lastEpgQuery;
+    std::pair<time_t, time_t> lastEpgQuery;
 
-	std::string userPath;
+    std::string userPath;
 };
 
 #endif // KARTINATVCLIENT_H
