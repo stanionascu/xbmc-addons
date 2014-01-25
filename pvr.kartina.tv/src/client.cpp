@@ -97,7 +97,7 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
 
     ADDON_ReadSettings();
     CLIENT = new KartinaTVClient(XBMC, PVR);
-	CLIENT->setUserProfilePath(g_strUserPath);
+    CLIENT->setUserProfilePath(g_strUserPath);
     CLIENT->login(std::string(g_strUsername), std::string(g_strPassword));
 
     m_CurStatus = ADDON_STATUS_OK;
