@@ -39,6 +39,7 @@ struct PVR_CHANNEL;
 struct PVR_CHANNEL_GROUP;
 struct PVR_CHANNEL_GROUP_MEMBER;
 struct EPG_TAG;
+struct json_object;
 
 class KartinaTVClient
 {
@@ -48,6 +49,16 @@ public:
         CurlMemoryBlob() : buffer(0), size(0) {}
         char *buffer;
         size_t size;
+    };
+
+    struct Channel
+    {
+        int id;
+        int number;
+        std::string name;
+        std::string streamUrl;
+        std::string iconUrl;
+        bool isRadio;
     };
 
 public:
@@ -82,9 +93,11 @@ protected:
     void updateChannelList();
     void updateChannelEpg(time_t start, int hours);
 
+    Channel channelFromJson(json_object *obj);
+    PVR_CHANNEL createPvrChannel(const Channel &channel);
+
     CurlMemoryBlob makeRequest(const char *apiFunction, PostFields &parameters);
     std::string stringifyPostFields(const PostFields &fields);
-
 
 private:
     ADDON::CHelper_libXBMC_addon *XBMC;
@@ -95,7 +108,7 @@ private:
 
     std::pair<std::string, std::string> sessionId;
 
-    std::list<PVR_CHANNEL*> channelsCache;
+    std::list<Channel> channelsCache;
     std::list<PVR_CHANNEL_GROUP*> channelGroupsCache;
     std::list<PVR_CHANNEL_GROUP_MEMBER*> channelGroupMembersCache;
     std::map<int, std::list<EPG_TAG*> > channelEpgCache;

@@ -171,10 +171,12 @@ bool KartinaTVClient::loadChannelsFromCache(ADDON_HANDLE handle, bool bRadio)
     if (channelsCache.empty())
         updateChannelList();
 
-    std::list<PVR_CHANNEL*>::const_iterator it = channelsCache.begin();
-
+    std::list<Channel>::const_iterator it = channelsCache.begin();
     for (; it != channelsCache.end(); ++it) {
-        PVR->TransferChannelEntry(handle, *it);
+        if ((*it).isRadio == bRadio) {
+            PVR_CHANNEL channel = createPvrChannel(*it);
+            PVR->TransferChannelEntry(handle, &channel);
+        }
     }
 
     return true;
@@ -308,34 +310,10 @@ void KartinaTVClient::updateChannelList()
                 array_list *channelsList = json_object_get_array(channels);
                 XBMC->Log(ADDON::LOG_NOTICE, "In group: %s", XBMC->UnknownToUTF8(groupName));
                 for (int j = 0; j < array_list_length(channelsList); ++j) {
-                    json_object *channel = (json_object*)array_list_get_idx(channelsList, j);
-                    int channelId = intFromJsonObject(channel, "id");
-                    const char *channelName = stringFromJsonObject(channel, "name");
-                    const char *epgProgramName = stringFromJsonObject(channel, "epg_progname");
-                    int epgStartTime = intFromJsonObject(channel, "epg_start");
-                    int epgEndTime = intFromJsonObject(channel, "epg_eng");
-
-                    PVR_CHANNEL *pvrChannel = new PVR_CHANNEL;
-                    memset(pvrChannel, 0, sizeof(PVR_CHANNEL));
-                    pvrChannel->bIsHidden = false;
-                    pvrChannel->bIsRadio = !(intFromJsonObject(channel, "is_video") == 1);
-                    pvrChannel->iChannelNumber = channelsCache.size();
-                    pvrChannel->iUniqueId = channelId;
-                    std::string icon = std::string("http://iptv.kartina.tv") + XBMC->UnknownToUTF8(stringFromJsonObject(channel, "icon"));
-                    std::ostringstream sStreamURL;
-                    sStreamURL << "pvr://stream/tv/" << channelId << ".ts";
-                    strcpy(pvrChannel->strStreamURL, XBMC->UnknownToUTF8(sStreamURL.str().data()));
-                    strcpy(pvrChannel->strChannelName, XBMC->UnknownToUTF8(channelName));
-                    strcpy(pvrChannel->strIconPath, icon.data());
-                    channelsCache.push_back(pvrChannel);
-
-                    PVR_CHANNEL_GROUP_MEMBER *pvrChannelGroupMember = new PVR_CHANNEL_GROUP_MEMBER;
-                    memset(pvrChannelGroupMember, 0, sizeof(PVR_CHANNEL_GROUP_MEMBER));
-                    pvrChannelGroupMember->iChannelNumber = channelId;
-                    pvrChannelGroupMember->iChannelUniqueId = channelId;
-                    strcpy(pvrChannelGroupMember->strGroupName, XBMC->UnknownToUTF8(channelName));
-
-                    //XBMC->Log(ADDON::LOG_NOTICE, "Channel: %s (%s)", XBMC->UnknownToUTF8(channelName), XBMC->UnknownToUTF8(epgProgramName));
+                    Channel channel = channelFromJson(
+                                (json_object*)array_list_get_idx(
+                                    channelsList, j));
+                    channelsCache.push_back(channel);
                 }
             }
         }
@@ -428,6 +406,38 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
     }
 
     free(reply.buffer);
+}
+
+KartinaTVClient::Channel KartinaTVClient::channelFromJson(json_object *obj)
+{
+    Channel channel;
+    channel.id = intFromJsonObject(obj, "id");
+    channel.name = XBMC->UnknownToUTF8(stringFromJsonObject(obj, "name"));
+    channel.number = channel.id;
+    channel.isRadio = (intFromJsonObject(obj, "is_video") != 1);
+    channel.iconUrl = std::string("http://iptv.kartina.tv") +
+            XBMC->UnknownToUTF8(stringFromJsonObject(obj, "icon"));
+    channel.streamUrl = std::string("pvr://stream/tv/") + toString(channel.id)
+            + ".ts";
+
+    return channel;
+}
+
+PVR_CHANNEL KartinaTVClient::createPvrChannel(
+        const KartinaTVClient::Channel &channel)
+{
+    PVR_CHANNEL pvr;
+    memset(&pvr, 0, sizeof(PVR_CHANNEL));
+
+    pvr.bIsHidden = false;
+    pvr.bIsRadio = channel.isRadio;
+    pvr.iChannelNumber = channel.number;
+    pvr.iUniqueId = channel.id;
+    strcpy(pvr.strChannelName, channel.name.c_str());
+    strcpy(pvr.strIconPath, channel.iconUrl.c_str());
+    strcpy(pvr.strStreamURL, channel.streamUrl.c_str());
+
+    return pvr;
 }
 
 KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunction, PostFields &parameters)
