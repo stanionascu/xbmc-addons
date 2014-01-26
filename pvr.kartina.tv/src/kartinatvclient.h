@@ -57,6 +57,13 @@ public:
         std::string name;
     };
 
+    struct ChannelGroupMember
+    {
+        int id;
+        int number;
+        std::string name;
+    };
+
     struct Channel
     {
         int id;
@@ -105,6 +112,11 @@ protected:
     ChannelGroup channelGroupFromJson(json_object *obj);
     PVR_CHANNEL_GROUP createPvrChannelGroup(const ChannelGroup &channelGroup);
 
+    ChannelGroupMember createChannelGroupMember(const Channel &channel,
+                                                const ChannelGroup &group);
+    PVR_CHANNEL_GROUP_MEMBER createPvrChannelGroupMember(
+            const ChannelGroupMember &member);
+
     CurlMemoryBlob makeRequest(const char *apiFunction, PostFields &parameters);
     std::string stringifyPostFields(const PostFields &fields);
 
@@ -119,7 +131,7 @@ private:
 
     std::list<Channel> channelsCache;
     std::list<ChannelGroup> channelGroupsCache;
-    std::list<PVR_CHANNEL_GROUP_MEMBER*> channelGroupMembersCache;
+    std::list<ChannelGroupMember> channelGroupMembersCache;
     std::map<int, std::list<EPG_TAG*> > channelEpgCache;
 
     std::pair<time_t, time_t> lastEpgQuery;

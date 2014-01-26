@@ -159,12 +159,17 @@ bool KartinaTVClient::loadChannelGroupsFromCache(ADDON_HANDLE handle,
     return true;
 }
 
-bool KartinaTVClient::loadChannelGroupMembersFromCache(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group)
+bool KartinaTVClient::loadChannelGroupMembersFromCache(
+        ADDON_HANDLE handle,
+        const PVR_CHANNEL_GROUP &group)
 {
-    std::list<PVR_CHANNEL_GROUP_MEMBER*>::const_iterator it = channelGroupMembersCache.begin();
+    std::list<ChannelGroupMember>::const_iterator it =
+            channelGroupMembersCache.begin();
     for (; it != channelGroupMembersCache.end(); ++it) {
-        if (strcmp(group.strGroupName, (*it)->strGroupName) == 0)
-            PVR->TransferChannelGroupMember(handle, *it);
+        if (strcmp(group.strGroupName, (*it).name.c_str()) == 0) {
+            PVR_CHANNEL_GROUP_MEMBER member = createPvrChannelGroupMember(*it);
+            PVR->TransferChannelGroupMember(handle, &member);
+        }
     }
 
     return true;
@@ -311,6 +316,9 @@ void KartinaTVClient::updateChannelList()
                                 (json_object*)array_list_get_idx(
                                     channelsList, j));
                     channelsCache.push_back(channel);
+                    channelGroupMembersCache.push_back(
+                                createChannelGroupMember(channel,
+                                                         channelGroup));
                 }
             }
         }
@@ -456,6 +464,31 @@ PVR_CHANNEL_GROUP KartinaTVClient::createPvrChannelGroup(
     strcpy(group.strGroupName, channelGroup.name.c_str());
 
     return group;
+}
+
+KartinaTVClient::ChannelGroupMember KartinaTVClient::createChannelGroupMember(
+        const KartinaTVClient::Channel &channel,
+        const KartinaTVClient::ChannelGroup &group)
+{
+    ChannelGroupMember member;
+    member.id = channel.id;
+    member.number = channel.number;
+    member.name = group.name;
+
+    return member;
+}
+
+PVR_CHANNEL_GROUP_MEMBER KartinaTVClient::createPvrChannelGroupMember(
+        const KartinaTVClient::ChannelGroupMember &member)
+{
+    PVR_CHANNEL_GROUP_MEMBER pvrMember;
+    memset(&pvrMember, 0, sizeof(PVR_CHANNEL_GROUP_MEMBER));
+
+    pvrMember.iChannelNumber = member.number;
+    pvrMember.iChannelUniqueId = member.id;
+    strcpy(pvrMember.strGroupName, member.name.c_str());
+
+    return pvrMember;
 }
 
 KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunction, PostFields &parameters)
