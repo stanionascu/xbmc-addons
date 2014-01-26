@@ -313,8 +313,7 @@ void KartinaTVClient::updateChannelList()
                 array_list *channelsList = json_object_get_array(channels);
                 for (int j = 0; j < array_list_length(channelsList); ++j) {
                     Channel channel = channelFromJson(
-                                (json_object*)array_list_get_idx(
-                                    channelsList, j));
+                                objectFromJsonArray(channelsList, j));
                     channelsCache.push_back(channel);
                     channelGroupMembersCache.push_back(
                                 createChannelGroupMember(channel,
