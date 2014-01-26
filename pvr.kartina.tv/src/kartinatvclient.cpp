@@ -314,6 +314,7 @@ void KartinaTVClient::updateChannelList()
                 for (int j = 0; j < array_list_length(channelsList); ++j) {
                     Channel channel = channelFromJson(
                                 objectFromJsonArray(channelsList, j));
+                    channel.number = channelsCache.size() + 1;
                     channelsCache.push_back(channel);
                     channelGroupMembersCache.push_back(
                                 createChannelGroupMember(channel,

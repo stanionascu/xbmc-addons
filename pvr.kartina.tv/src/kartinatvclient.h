@@ -67,7 +67,7 @@ public:
     struct Channel
     {
         int id;
-        int number;
+        unsigned int number;
         std::string name;
         std::string streamUrl;
         std::string iconUrl;
