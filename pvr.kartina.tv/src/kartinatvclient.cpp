@@ -145,11 +145,15 @@ KartinaTVClient::~KartinaTVClient()
     curl_easy_cleanup(curl);
 }
 
-bool KartinaTVClient::loadChannelGroupsFromCache(ADDON_HANDLE handle, bool bRadio)
+bool KartinaTVClient::loadChannelGroupsFromCache(ADDON_HANDLE handle,
+                                                 bool bRadio)
 {
-    std::list<PVR_CHANNEL_GROUP*>::const_iterator it = channelGroupsCache.begin();
+    std::list<ChannelGroup>::const_iterator it = channelGroupsCache.begin();
     for (; it != channelGroupsCache.end(); ++it) {
-        PVR->TransferChannelGroup(handle, *it);
+        if (!bRadio) {
+            PVR_CHANNEL_GROUP channelGroup = createPvrChannelGroup(*it);
+            PVR->TransferChannelGroup(handle, &channelGroup);
+        }
     }
 
     return true;
@@ -297,18 +301,11 @@ void KartinaTVClient::updateChannelList()
         array_list *groups = arrayFromJsonObject(obj, "groups");
         for (int i = 0; i < array_list_length(groups); ++i) {
             json_object *group = objectFromJsonArray(groups, i);
-            int groupId = intFromJsonObject(group, "id");
-            const char *groupName = stringFromJsonObject(group, "name");
-
-            PVR_CHANNEL_GROUP *pvrChannelGroup = new PVR_CHANNEL_GROUP;
-            pvrChannelGroup->bIsRadio = false;
-            strcpy(pvrChannelGroup->strGroupName, XBMC->UnknownToUTF8(groupName));
-            channelGroupsCache.push_back(pvrChannelGroup);
-
+            ChannelGroup channelGroup = channelGroupFromJson(group);
+            channelGroupsCache.push_back(channelGroup);
             json_object *channels = json_object_object_get(group, "channels");
             if (channels) {
                 array_list *channelsList = json_object_get_array(channels);
-                XBMC->Log(ADDON::LOG_NOTICE, "In group: %s", XBMC->UnknownToUTF8(groupName));
                 for (int j = 0; j < array_list_length(channelsList); ++j) {
                     Channel channel = channelFromJson(
                                 (json_object*)array_list_get_idx(
@@ -317,10 +314,9 @@ void KartinaTVClient::updateChannelList()
                 }
             }
         }
-
-        //XBMC->Log(ADDON::LOG_NOTICE, reply.buffer);
     } else {
-        XBMC->Log(ADDON::LOG_ERROR, "Error occured: code %d %s", ktvError.code, ktvError.message.c_str());
+        XBMC->Log(ADDON::LOG_ERROR, "Error occured: code %d %s",
+                  ktvError.code, ktvError.message.c_str());
         XBMC->Log(ADDON::LOG_ERROR, "Request to API server failed.");
     }
 
@@ -438,6 +434,28 @@ PVR_CHANNEL KartinaTVClient::createPvrChannel(
     strcpy(pvr.strStreamURL, channel.streamUrl.c_str());
 
     return pvr;
+}
+
+KartinaTVClient::ChannelGroup KartinaTVClient::channelGroupFromJson(
+        json_object *obj)
+{
+    ChannelGroup group;
+    group.id = intFromJsonObject(obj, "id");
+    group.name = XBMC->UnknownToUTF8(stringFromJsonObject(obj, "name"));
+
+    return group;
+}
+
+PVR_CHANNEL_GROUP KartinaTVClient::createPvrChannelGroup(
+        const KartinaTVClient::ChannelGroup &channelGroup)
+{
+    PVR_CHANNEL_GROUP group;
+    memset(&group, 0, sizeof(PVR_CHANNEL_GROUP));
+
+    group.bIsRadio = false;
+    strcpy(group.strGroupName, channelGroup.name.c_str());
+
+    return group;
 }
 
 KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunction, PostFields &parameters)
