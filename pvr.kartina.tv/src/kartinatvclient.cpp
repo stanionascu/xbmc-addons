@@ -136,7 +136,7 @@ int waitForSocket(curl_socket_t socket, long msecs, bool receive)
 }
 
 KartinaTVClient::KartinaTVClient(ADDON::CHelper_libXBMC_addon *XBMC, CHelper_libXBMC_pvr *PVR) :
-    XBMC(XBMC), PVR(PVR), curl(0), streamCurl(0), streamSocket(), lastEpgQuery(0, 0)
+    XBMC(XBMC), PVR(PVR), curl(0), lastEpgQuery(0, 0)
 {
 }
 

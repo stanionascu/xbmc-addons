@@ -34,7 +34,6 @@ class CHelper_libXBMC_addon;
 }
 class CHelper_libXBMC_pvr;
 typedef void CURL;
-typedef unsigned int curl_socket_t;
 struct PVR_CHANNEL;
 struct PVR_CHANNEL_GROUP;
 struct PVR_CHANNEL_GROUP_MEMBER;
@@ -124,8 +123,6 @@ private:
     ADDON::CHelper_libXBMC_addon *XBMC;
     CHelper_libXBMC_pvr *PVR;
     CURL *curl;
-    CURL *streamCurl;
-    curl_socket_t streamSocket;
 
     std::pair<std::string, std::string> sessionId;
 
