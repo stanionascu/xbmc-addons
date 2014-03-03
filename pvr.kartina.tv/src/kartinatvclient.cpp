@@ -505,7 +505,6 @@ KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunc
 
     const std::string apiCallUrl = makeApiUrl(apiFunction);
 
-    XBMC->Log(ADDON::LOG_NOTICE, apiCallUrl.data());
     curl_easy_setopt(curl, CURLOPT_URL, apiCallUrl.data());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteToMemory);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&reply);
