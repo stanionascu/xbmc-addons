@@ -523,14 +523,8 @@ KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunc
     CURLcode result = curl_easy_perform(curl);
 
     XBMC->Log(ADDON::LOG_NOTICE, "void KartinaTVClient::makeRequest()");
-    if (result == CURLE_OK) {
-        char *data = XBMC->UnknownToUTF8(reply.buffer);
-        FILE *f = fopen((userPath + "msg_dump.txt").data(), "a+");
-        fprintf(f, "reply: %s\r\n", data);
-        fclose(f);
-        XBMC->FreeString(data);
+    if (result == CURLE_OK)
         return reply;
-    }
 
     return CurlMemoryBlob();
 }
