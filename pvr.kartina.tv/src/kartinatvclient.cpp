@@ -109,30 +109,6 @@ UrlData parseUrl(std::string url)
 
     return data;
 }
-
-
-int waitForSocket(curl_socket_t socket, long msecs, bool receive)
-{
-    timeval tv;
-    tv.tv_sec = msecs / 1000;
-    tv.tv_usec = (msecs % 1000) * 1000;
-
-    fd_set infd, outfd, errfd;
-    FD_ZERO(&infd);
-    FD_ZERO(&outfd);
-    FD_ZERO(&errfd);
-
-    FD_SET(socket, &errfd);
-
-    if (receive)
-        FD_SET(socket, &infd);
-    else
-        FD_SET(socket, &outfd);
-
-    int result = select(socket + 1, &infd, &outfd, &errfd, &tv);
-    return result;
-}
-
 }
 
 KartinaTVClient::KartinaTVClient(ADDON::CHelper_libXBMC_addon *XBMC, CHelper_libXBMC_pvr *PVR) :
