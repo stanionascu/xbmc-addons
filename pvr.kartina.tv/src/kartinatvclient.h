@@ -71,6 +71,7 @@ public:
         std::string streamUrl;
         std::string iconUrl;
         bool isRadio;
+        bool isProtected;
     };
 
 public:

@@ -403,6 +403,7 @@ KartinaTVClient::Channel KartinaTVClient::channelFromJson(json_object *obj)
             XBMC->UnknownToUTF8(stringFromJsonObject(obj, "icon"));
     channel.streamUrl = std::string("pvr://stream/tv/") + toString(channel.id)
             + ".ts";
+    channel.isProtected = (intFromJsonObject(obj, "protected") == 1);
 
     return channel;
 }
