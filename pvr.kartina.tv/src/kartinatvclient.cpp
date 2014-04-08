@@ -195,10 +195,11 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
     parameters.insert(std::make_pair("cid", toString(channel.iUniqueId)));
 
     CurlMemoryBlob reply = makeRequest("get_url", parameters);
+    XBMC->Log(ADDON::LOG_DEBUG, "%s: data: %s", __FUNCTION__,
+              XBMC->UnknownToUTF8(reply.buffer));
 
     KTVError ktvError;
     if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
-        XBMC->Log(ADDON::LOG_DEBUG, reply.buffer);
         json_object *obj = json_tokener_parse(reply.buffer);
         const char *urlData = stringFromJsonObject(obj, "url");
 
