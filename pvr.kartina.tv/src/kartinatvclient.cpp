@@ -169,15 +169,13 @@ bool KartinaTVClient::loadChannelsFromCache(ADDON_HANDLE handle, bool bRadio)
 
 bool KartinaTVClient::loadEpgFromCache(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t start, time_t end)
 {
-//    XBMC->Log(ADDON::LOG_NOTICE, "KartinaTVClient::loadEpgFromCache for channel: %d (has: %d)", channel.iChannelNumber,
-//              channelEpgCache.count(channel.iChannelNumber));
+    XBMC->Log(ADDON::LOG_DEBUG, "KartinaTVClient::loadEpgFromCache %d", start);
 
-    if (lastEpgQuery != std::make_pair(start, end)) {
+    // if new query is at least 60s in the future, update cache.
+    if ((start - lastEpgQuery.first) > 60) {
         updateChannelEpg(start + 3600 * 18, (end - start)/3600 + 3);
         lastEpgQuery = std::make_pair(start, end);
     }
-
-    XBMC->Log(ADDON::LOG_DEBUG, "KartinaTVClient::loadEpgFromCache");
 
     if (channelEpgCache.count(channel.iUniqueId) > 0) {
         const std::list<EPG_TAG*> &epg = channelEpgCache.at(channel.iUniqueId);
