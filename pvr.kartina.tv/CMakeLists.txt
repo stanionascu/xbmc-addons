@@ -21,6 +21,7 @@ include_directories("${XbmcAddons_DIR}/include"
 
 if(MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /NODEFAULTLIB:libcmt.lib")
 
     add_definitions(-D_WINDLL
         -DTARGET_WINDOWS
