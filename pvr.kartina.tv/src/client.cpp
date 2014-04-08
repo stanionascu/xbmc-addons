@@ -45,6 +45,7 @@ std::string g_strCurrentStreamUrl     = "";
 
 std::string g_strUsername             = "";
 std::string g_strPassword             = "";
+std::string g_strProtectCode        = "";
 
 CHelper_libXBMC_addon *XBMC           = NULL;
 CHelper_libXBMC_pvr   *PVR            = NULL;
@@ -61,6 +62,10 @@ void ADDON_ReadSettings(void)
 
     if (XBMC->GetSetting("password", &buffer))
         g_strPassword = buffer;
+
+    if (XBMC->GetSetting("protect_code", &buffer))
+        g_strProtectCode = buffer;
+
     buffer[0] = 0;
 }
 
@@ -86,7 +91,6 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
         return ADDON_STATUS_PERMANENT_FAILURE;
     }
 
-
     XBMC->Log(LOG_DEBUG, "%s - Creating the Kartina.TV PVR add-on", __FUNCTION__);
 
     m_CurStatus     = ADDON_STATUS_UNKNOWN;
@@ -99,6 +103,8 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     CLIENT = new KartinaTVClient(XBMC, PVR);
     CLIENT->setUserProfilePath(g_strUserPath);
     CLIENT->login(std::string(g_strUsername), std::string(g_strPassword));
+    if (!g_strProtectCode.empty())
+        CLIENT->setProtectCode(g_strProtectCode);
 
     m_CurStatus = ADDON_STATUS_OK;
     m_bCreated = true;
@@ -132,7 +138,8 @@ unsigned int ADDON_GetSettings(ADDON_StructSetting ***sSet)
 
 ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
 {
-    if (strcmp(settingName, "username") == 0 || strcmp(settingName, "password"))
+    if (strcmp(settingName, "username") == 0 ||
+            strcmp(settingName, "password") == 0)
         return ADDON_STATUS_NEED_RESTART;
 
     return ADDON_STATUS_OK;

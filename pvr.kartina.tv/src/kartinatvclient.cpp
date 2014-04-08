@@ -267,6 +267,11 @@ void KartinaTVClient::logout()
     makeRequest("logout", parameters);
 }
 
+void KartinaTVClient::setProtectCode(const std::string &code)
+{
+    protectCode = code;
+}
+
 void KartinaTVClient::updateChannelList()
 {
     XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::updateChannelsList()");

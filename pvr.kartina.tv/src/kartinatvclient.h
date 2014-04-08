@@ -83,6 +83,7 @@ public:
 
     bool login(const std::string &user, const std::string &pass);
     void logout();
+    void setProtectCode(const std::string &code);
 
     bool loadChannelGroupsFromCache(ADDON_HANDLE handle, bool bRadio);
     bool loadChannelGroupMembersFromCache(ADDON_HANDLE handle, const PVR_CHANNEL_GROUP &group);
@@ -125,6 +126,7 @@ private:
     CURL *curl;
 
     std::pair<std::string, std::string> sessionId;
+    std::string protectCode;
 
     std::list<Channel> channelsCache;
     std::list<ChannelGroup> channelGroupsCache;
