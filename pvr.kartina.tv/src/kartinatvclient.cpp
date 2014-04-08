@@ -191,8 +191,16 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
 {
     XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::requestStreamUrl()");
 
+    bool isProtected = false;
+    std::list<Channel>::const_iterator it = channelsCache.begin();
+    for (; it != channelsCache.end(); ++ it ) {
+        if (it->id == channel.iUniqueId && it->isProtected)
+            isProtected = true;
+    }
     PostFields parameters;
     parameters.insert(std::make_pair("cid", toString(channel.iUniqueId)));
+    if (isProtected)
+        parameters.insert(std::make_pair("protect_code", protectCode));
 
     CurlMemoryBlob reply = makeRequest("get_url", parameters);
     XBMC->Log(ADDON::LOG_DEBUG, "%s: data: %s", __FUNCTION__,
