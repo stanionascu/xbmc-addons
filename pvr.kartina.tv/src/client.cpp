@@ -100,6 +100,9 @@ ADDON_STATUS ADDON_Create(void* hdl, void* props)
     XBMC->Log(LOG_DEBUG, "User profile path: %s", g_strUserPath.data());
 
     ADDON_ReadSettings();
+    if (g_strUsername.empty() || g_strPassword.empty())
+        return ADDON_STATUS_NEED_SETTINGS;
+
     CLIENT = new KartinaTVClient(XBMC, PVR);
     CLIENT->setUserProfilePath(g_strUserPath);
     CLIENT->login(std::string(g_strUsername), std::string(g_strPassword));
