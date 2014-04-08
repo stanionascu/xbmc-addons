@@ -177,7 +177,7 @@ bool KartinaTVClient::loadEpgFromCache(ADDON_HANDLE handle, const PVR_CHANNEL &c
         lastEpgQuery = std::make_pair(start, end);
     }
 
-    XBMC->Log(ADDON::LOG_NOTICE, "KartinaTVClient::loadEpgFromCache");
+    XBMC->Log(ADDON::LOG_DEBUG, "KartinaTVClient::loadEpgFromCache");
 
     if (channelEpgCache.count(channel.iUniqueId) > 0) {
         const std::list<EPG_TAG*> &epg = channelEpgCache.at(channel.iUniqueId);
@@ -191,7 +191,7 @@ bool KartinaTVClient::loadEpgFromCache(ADDON_HANDLE handle, const PVR_CHANNEL &c
 
 std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
 {
-    XBMC->Log(ADDON::LOG_NOTICE, "void KartinaTVClient::requestStreamUrl()");
+    XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::requestStreamUrl()");
 
     PostFields parameters;
     parameters.insert(std::make_pair("cid", toString(channel.iUniqueId)));
@@ -200,7 +200,7 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
 
     KTVError ktvError;
     if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
-        XBMC->Log(ADDON::LOG_NOTICE, reply.buffer);
+        XBMC->Log(ADDON::LOG_DEBUG, reply.buffer);
         json_object *obj = json_tokener_parse(reply.buffer);
         const char *urlData = stringFromJsonObject(obj, "url");
 
@@ -208,7 +208,7 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
         std::stringstream stream(urlData);
         std::string param;
         while (stream >> param) {
-            XBMC->Log(ADDON::LOG_NOTICE, "Extracted: %d %s", urlParams.size(), param.data());
+            XBMC->Log(ADDON::LOG_DEBUG, "Extracted: %d %s", urlParams.size(), param.data());
             urlParams.push_back(param);
         }
 
@@ -234,7 +234,7 @@ void KartinaTVClient::setUserProfilePath(const std::string &path)
 
 bool KartinaTVClient::login(const std::string &user, const std::string &pass)
 {
-    XBMC->Log(ADDON::LOG_NOTICE, "void KartinaTVClient::login()");
+    XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::login()");
 
     PostFields parameters;
     parameters.insert(std::make_pair("login", user));
@@ -243,7 +243,7 @@ bool KartinaTVClient::login(const std::string &user, const std::string &pass)
 
     KTVError ktvError;
     if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
-        XBMC->Log(ADDON::LOG_NOTICE, reply.buffer);
+        XBMC->Log(ADDON::LOG_DEBUG, reply.buffer);
 
         json_object *obj = json_tokener_parse(reply.buffer);
         sessionId.first = stringFromJsonObject(obj, "sid_name");
@@ -262,7 +262,7 @@ bool KartinaTVClient::login(const std::string &user, const std::string &pass)
 
 void KartinaTVClient::logout()
 {
-    XBMC->Log(ADDON::LOG_NOTICE, "void KartinaTVClient::logout()");
+    XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::logout()");
 
     PostFields parameters;
     makeRequest("logout", parameters);
@@ -270,7 +270,7 @@ void KartinaTVClient::logout()
 
 void KartinaTVClient::updateChannelList()
 {
-    XBMC->Log(ADDON::LOG_NOTICE, "void KartinaTVClient::updateChannelsList()");
+    XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::updateChannelsList()");
 
     PostFields parameters;
     CurlMemoryBlob reply = makeRequest("channel_list", parameters);
@@ -309,7 +309,7 @@ void KartinaTVClient::updateChannelList()
 
 void KartinaTVClient::updateChannelEpg(time_t start, int hours)
 {
-    XBMC->Log(ADDON::LOG_NOTICE, "KartinaTVClient::updateChannelEpg start=%d hours=%d", start, hours);
+    XBMC->Log(ADDON::LOG_DEBUG, "KartinaTVClient::updateChannelEpg start=%d hours=%d", start, hours);
     PostFields parameters;
     parameters.insert(std::make_pair("dtime", toString(start)));
     parameters.insert(std::make_pair("period", toString(hours)));
@@ -472,7 +472,7 @@ KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunc
     if (!curl)
         curl = curl_easy_init();
 
-    XBMC->Log(ADDON::LOG_NOTICE, "void KartinaTVClient::makeRequest()");
+    XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::makeRequest()");
 
     CurlMemoryBlob reply;
     reply.buffer = static_cast<char*>(malloc(1));
@@ -486,18 +486,18 @@ KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunc
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&reply);
 
     std::string cookiesPath = userPath + "cookies.txt";
-    XBMC->Log(ADDON::LOG_ERROR, "User path for cookies: %s", cookiesPath.data());
+    XBMC->Log(ADDON::LOG_DEBUG, "User path for cookies: %s", cookiesPath.data());
     curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cookiesPath.data());
     curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookiesPath.data());
 
     const std::string postFields = stringifyPostFields(parameters);
 
-    XBMC->Log(ADDON::LOG_NOTICE, postFields.data());
+    XBMC->Log(ADDON::LOG_DEBUG, postFields.data());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postFields.data());
 
     CURLcode result = curl_easy_perform(curl);
 
-    XBMC->Log(ADDON::LOG_NOTICE, "void KartinaTVClient::makeRequest()");
+    XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::makeRequest()");
     if (result == CURLE_OK)
         return reply;
 

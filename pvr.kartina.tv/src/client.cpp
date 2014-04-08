@@ -180,7 +180,7 @@ const char* GetMininumGUIAPIVersion(void)
 
 PVR_ERROR GetAddonCapabilities(PVR_ADDON_CAPABILITIES* pCapabilities)
 {
-    XBMC->Log(LOG_ERROR, "GetAddonCapabilities!");
+    XBMC->Log(LOG_DEBUG, "GetAddonCapabilities!");
     pCapabilities->bSupportsEPG             = true;
     pCapabilities->bSupportsTV              = true;
     pCapabilities->bSupportsRadio           = true;
@@ -219,7 +219,7 @@ PVR_ERROR GetDriveSpace(long long *iTotal, long long *iUsed)
 
 PVR_ERROR GetEPGForChannel(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t iStart, time_t iEnd)
 {
-    XBMC->Log(ADDON::LOG_NOTICE, "KartinaTVClient::loadEpgFromCache");
+    XBMC->Log(LOG_DEBUG, "KartinaTVClient::loadEpgFromCache");
 
     if (CLIENT->loadEpgFromCache(handle, channel, iStart, iEnd))
         return PVR_ERROR_NO_ERROR;
@@ -245,7 +245,7 @@ const char *GetLiveStreamURL(const PVR_CHANNEL &channel)
     m_CurChannelId = channel.iChannelNumber;
     g_strCurrentStreamUrl = CLIENT->requestStreamUrl(channel);
 
-    XBMC->Log(LOG_ERROR, "GetLiveStreamURL! %s", g_strCurrentStreamUrl.data());
+    XBMC->Log(LOG_DEBUG, "GetLiveStreamURL! %s", g_strCurrentStreamUrl.data());
     return g_strCurrentStreamUrl.data();
 }
 
@@ -256,7 +256,7 @@ bool OpenLiveStream(const PVR_CHANNEL &channel)
 
 void CloseLiveStream(void)
 {
-    XBMC->Log(LOG_ERROR, "CloseLiveStream!");
+    XBMC->Log(LOG_DEBUG, "CloseLiveStream!");
     g_strCurrentStreamUrl = "";
 }
 
@@ -267,13 +267,13 @@ int ReadLiveStream(unsigned char *pBuffer, unsigned int iBufferSize)
 
 int GetCurrentClientChannel(void)
 {
-    XBMC->Log(LOG_ERROR, "GetCurrentClientChannel!");
+    XBMC->Log(LOG_DEBUG, "GetCurrentClientChannel!");
     return m_CurChannelId;
 }
 
 bool SwitchChannel(const PVR_CHANNEL &channel)
 {
-    XBMC->Log(LOG_ERROR, "SwitchChannel!");
+    XBMC->Log(LOG_DEBUG, "SwitchChannel!");
     CloseLiveStream();
     return OpenLiveStream(channel);
 }
