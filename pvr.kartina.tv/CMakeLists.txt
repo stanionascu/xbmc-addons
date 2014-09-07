@@ -3,18 +3,15 @@ cmake_minimum_required(VERSION 2.8)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
 
-if(NOT DEFINED XbmcAddons_DIR)
-    message(FATAL_ERROR "Cannot continue without XbmcAddons_DIR")
+if(NOT DEFINED XbmcPvrAddons_DIR)
+    message(FATAL_ERROR "Cannot continue without XbmcPvrAddons_DIR")
 endif()
 
 find_package(LibJSONC REQUIRED)
 find_package(LibCURL REQUIRED)
 
-include_directories("${XbmcAddons_DIR}/include"
-    "${XbmcAddons_DIR}/../../addons/library.xbmc.addon"
-    "${XbmcAddons_DIR}/../../addons/library.xbmc.pvr"
-    "${XbmcAddons_DIR}/../../addons/library.xbmc.gui"
-    "${XbmcAddons_DIR}/.."
+include_directories("${XbmcPvrAddons_DIR}/xbmc"
+    "${XbmcPvrAddons_DIR}/lib"
     "${LIBCURL_INCLUDE_DIR}"
     "${LIBJSONC_INCLUDE_DIR}"
 )
@@ -36,8 +33,8 @@ if(WIN32)
     if(NOT DEFINED XbmcPvrAddons_PLATFORM_LIBRARY)
         message(FATAL_ERROR "Cannot continue without XbmcPvrAddons_PLATFORM_LIBRARY")
     endif()
-    include_directories(AFTER
-        "${XbmcAddons_DIR}/../win32"
+    include_directories(APPEND
+        "${XbmcPvrAddons_DIR}/lib/platform/windows"
     )
 endif()
 

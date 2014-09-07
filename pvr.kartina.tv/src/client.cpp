@@ -24,9 +24,14 @@
 #include <libXBMC_addon.h>
 #include <libXBMC_pvr.h>
 #include <libXBMC_gui.h>
-#include <system.h>
+#include <platform/util/util.h>
+#include <stdio.h>
 
 #include "kartinatvclient.h"
+
+#ifdef _WIN32
+#   define snprintf _snprintf
+#endif // _WIN32
 
 using namespace std;
 using namespace ADDON;
