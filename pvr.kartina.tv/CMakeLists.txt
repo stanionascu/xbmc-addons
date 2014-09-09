@@ -31,9 +31,6 @@ if(MSVC)
 endif()
 
 if(WIN32)
-    if(NOT DEFINED XbmcPvrAddons_PLATFORM_LIBRARY)
-        message(FATAL_ERROR "Cannot continue without XbmcPvrAddons_PLATFORM_LIBRARY")
-    endif()
     include_directories(APPEND
         "${XbmcPvrAddons_DIR}/lib/platform/windows"
     )
@@ -47,7 +44,15 @@ add_library(${PROJECT_NAME} SHARED ${SRC_LIST})
 target_link_libraries(${PROJECT_NAME} ${LIBCURL_LIBRARIES})
 
 if(WIN32)
-    target_link_libraries(${PROJECT_NAME} ${XbmcPvrAddons_PLATFORM_LIBRARY} ws2_32)
+    if(MSVC)
+        target_link_libraries(${PROJECT_NAME}
+            ${XbmcPvrAddons_DIR}/project/VS2010Express/${CMAKE_BUILD_TYPE}/platform.lib
+            ${XbmcPvrAddons_DIR}/project/VS2010Express/${CMAKE_BUILD_TYPE}/libjsoncpp.lib
+            ws2_32
+        )
+    else()
+        message(FATAL_ERROR "Update here for different setups")
+    endif()
     set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME "XBMC_KartinaTV_win32")
 endif()
 
