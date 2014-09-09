@@ -38,7 +38,10 @@ struct PVR_CHANNEL;
 struct PVR_CHANNEL_GROUP;
 struct PVR_CHANNEL_GROUP_MEMBER;
 struct EPG_TAG;
-struct json_object;
+
+namespace Json {
+class Value;
+}
 
 class KartinaTVClient
 {
@@ -107,10 +110,10 @@ protected:
     void updateChannelList();
     void updateChannelEpg(time_t start, int hours);
 
-    Channel channelFromJson(json_object *obj);
+    Channel channelFromJson(const Json::Value &value);
     PVR_CHANNEL createPvrChannel(const Channel &channel);
 
-    ChannelGroup channelGroupFromJson(json_object *obj);
+    ChannelGroup channelGroupFromJson(const Json::Value &value);
     PVR_CHANNEL_GROUP createPvrChannelGroup(const ChannelGroup &channelGroup);
 
     ChannelGroupMember createChannelGroupMember(const Channel &channel,

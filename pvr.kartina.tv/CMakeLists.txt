@@ -7,13 +7,12 @@ if(NOT DEFINED XbmcPvrAddons_DIR)
     message(FATAL_ERROR "Cannot continue without XbmcPvrAddons_DIR")
 endif()
 
-find_package(LibJSONC REQUIRED)
 find_package(LibCURL REQUIRED)
 
 include_directories("${XbmcPvrAddons_DIR}/xbmc"
     "${XbmcPvrAddons_DIR}/lib"
+    "${XbmcPvrAddons_DIR}/lib/jsoncpp/include"
     "${LIBCURL_INCLUDE_DIR}"
-    "${LIBJSONC_INCLUDE_DIR}"
 )
 
 if(MSVC)
@@ -43,7 +42,7 @@ file(GLOB_RECURSE SRC_LIST "./src/" "./src/*")
 configure_file("./src/addons/addon.xml.in" "./src/addons/addon.xml")
 
 add_library(${PROJECT_NAME} SHARED ${SRC_LIST})
-target_link_libraries(${PROJECT_NAME} ${LIBCURL_LIBRARIES} ${LIBJSONC_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${LIBCURL_LIBRARIES})
 
 if(WIN32)
     target_link_libraries(${PROJECT_NAME} ${XbmcPvrAddons_PLATFORM_LIBRARY} ws2_32)

@@ -33,7 +33,6 @@
 
 #include <curl/curl.h>
 #include <json/json.h>
-#include <json/json_tokener.h>
 #include <libXBMC_addon.h>
 #include <libXBMC_pvr.h>
 
@@ -62,11 +61,6 @@ size_t curlWriteToMemory(void *buffer, size_t size, size_t nitems, void *outstre
     return bufferSize;
 }
 
-const char *stringFromJsonObject(json_object *object, const char *key) { return json_object_get_string(json_object_object_get(object, key)); }
-int intFromJsonObject(json_object *object, const char *key) { return json_object_get_int(json_object_object_get(object, key)); }
-array_list *arrayFromJsonObject(json_object *object, const char *key) { return json_object_get_array(json_object_object_get(object, key)); }
-json_object *objectFromJsonArray(array_list *array, int index) { return (json_object*)array_list_get_idx(array, index); }
-
 template<class T>
 std::string toString(T any) { std::stringstream stream; stream << any; return stream.str(); }
 
@@ -80,12 +74,14 @@ struct KTVError {
 KTVError checkForError(const char *buffer)
 {
     KTVError error;
-    json_object *obj = json_tokener_parse(buffer);
-    if (obj) {
-        json_object *jError = json_object_object_get(obj, "error");
-        if (jError) {
-            error.code = intFromJsonObject(jError, "code");
-            error.message = stringFromJsonObject(jError, "message");
+    Json::Reader reader;
+    Json::Value root;
+    reader.parse(buffer, root);
+    if (!root.isNull()) {
+        Json::Value jsonError = root["error"];
+        if (!jsonError.isNull()) {
+            error.code = jsonError["code"].asInt();
+            error.message = jsonError["message"].asString();
         }
     }
     return error;
@@ -208,8 +204,10 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
 
     KTVError ktvError;
     if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
-        json_object *obj = json_tokener_parse(reply.buffer);
-        const char *urlData = stringFromJsonObject(obj, "url");
+        Json::Reader json;
+        Json::Value root;
+        json.parse(reply.buffer, root);
+        const char *urlData = root["url"].asCString();
 
         std::list<std::string> urlParams;
         std::stringstream stream(urlData);
@@ -252,9 +250,11 @@ bool KartinaTVClient::login(const std::string &user, const std::string &pass)
     if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
         XBMC->Log(ADDON::LOG_DEBUG, reply.buffer);
 
-        json_object *obj = json_tokener_parse(reply.buffer);
-        sessionId.first = stringFromJsonObject(obj, "sid_name");
-        sessionId.second = stringFromJsonObject(obj, "sid");
+        Json::Reader json;
+        Json::Value root;
+        json.parse(reply.buffer, root);
+        sessionId.first = root["sid_name"].asString();
+        sessionId.second = root["sid"].asString();
         free(reply.buffer);
     } else {
         XBMC->Log(ADDON::LOG_ERROR, "Error occured: code %d %s", ktvError.code, ktvError.message.c_str());
@@ -290,18 +290,18 @@ void KartinaTVClient::updateChannelList()
 
     KTVError ktvError;
     if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
-        json_object *obj = json_tokener_parse(reply.buffer);
-        array_list *groups = arrayFromJsonObject(obj, "groups");
-        for (int i = 0; i < array_list_length(groups); ++i) {
-            json_object *group = objectFromJsonArray(groups, i);
+        Json::Reader json;
+        Json::Value root;
+        json.parse(reply.buffer, root);
+        Json::Value groups = root["groups"];
+        for (Json::Value::UInt i = 0; i < groups.size(); ++i) {
+            const Json::Value &group = groups[i];
             ChannelGroup channelGroup = channelGroupFromJson(group);
             channelGroupsCache.push_back(channelGroup);
-            json_object *channels = json_object_object_get(group, "channels");
-            if (channels) {
-                array_list *channelsList = json_object_get_array(channels);
-                for (int j = 0; j < array_list_length(channelsList); ++j) {
-                    Channel channel = channelFromJson(
-                                objectFromJsonArray(channelsList, j));
+            const Json::Value &channels = group["channels"];
+            if (!channels.isNull()) {
+                for (Json::Value::UInt j = 0; j < channels.size(); ++j) {
+                    Channel channel = channelFromJson(channels[j]);
                     channel.number = channelsCache.size() + 1;
                     channelsCache.push_back(channel);
                     channelGroupMembersCache.push_back(
@@ -331,21 +331,26 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
     KTVError ktvError;
 
     if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
-        json_object *obj = json_tokener_parse(reply.buffer);
-        array_list *epg3 = arrayFromJsonObject(obj, "epg3");
-        for (int i = 0; i < array_list_length(epg3); ++i) {
-            json_object *channelEpg = objectFromJsonArray(epg3, i);
-            int channelId = intFromJsonObject(channelEpg, "id");
-            char *channelName = XBMC->UnknownToUTF8(stringFromJsonObject(channelEpg, "name"));
+        Json::Reader json;
+        Json::Value root;
+        json.parse(reply.buffer, root);
+        const Json::Value &epg3 = root["epg3"];
+        for (Json::Value::UInt i = 0; i < epg3.size(); ++i) {
+            const Json::Value &channelEpg = epg3[i];
+            int channelId = -1;
+            if (channelEpg["id"].isIntegral())
+                channelId = channelEpg["id"].asInt();
+            else
+                channelId = std::stoi(channelEpg["id"].asString());
+
             if (channelEpgCache.count(channelId) == 0)
                 channelEpgCache.insert(std::make_pair(channelId, std::list<EPG_TAG*>()));
 
-            json_object *epg = json_object_object_get(channelEpg, "epg");
+            const Json::Value &epg = channelEpg["epg"];
             EPG_TAG *lastEntry = NULL;
-            if (epg) {
-                array_list *epgList = json_object_get_array(epg);
-                for (int j = 0; j < array_list_length(epgList); ++j) {
-                    json_object *program = (json_object*)array_list_get_idx(epgList, j);
+            if (!epg.isNull()) {
+                for (Json::Value::UInt j = 0; j < epg.size(); ++j) {
+                    const Json::Value &program = epg[j];
 
                     EPG_TAG *tag = new EPG_TAG;
                     memset(tag, 0, sizeof(EPG_TAG));
@@ -355,11 +360,11 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
                     if (lastEntry == NULL)
                         tag->startTime = start + 1;
                     else
-                        tag->startTime = intFromJsonObject(program, "ut_start");
+                        tag->startTime = program["ut_start"].asInt();
                     tag->endTime = tag->startTime + 300;
                     if (lastEntry != NULL)
                         lastEntry->endTime = tag->startTime;
-                    std::string longTitle = XBMC->UnknownToUTF8(stringFromJsonObject(program, "progname"));
+                    std::string longTitle = program["progname"].asString();
                     std::istringstream titleStream(longTitle);
                     std::vector<std::string> titleLines;
                     while (!titleStream.eof()) {
@@ -381,8 +386,8 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
                         }
                     }
 
-                    tag->strTitle = XBMC->UnknownToUTF8(title.data());
-                    tag->strPlot = XBMC->UnknownToUTF8(plot.data());
+                    tag->strTitle = _strdup(title.c_str());
+                    tag->strPlot = _strdup(plot.c_str());
 
                     channelEpgCache.at(channelId).push_back(tag);
                     lastEntry = tag;
@@ -400,18 +405,18 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
     free(reply.buffer);
 }
 
-KartinaTVClient::Channel KartinaTVClient::channelFromJson(json_object *obj)
+KartinaTVClient::Channel KartinaTVClient::channelFromJson(const Json::Value &value)
 {
     Channel channel;
-    channel.id = intFromJsonObject(obj, "id");
-    channel.name = XBMC->UnknownToUTF8(stringFromJsonObject(obj, "name"));
+    channel.id = value["id"].asInt();
+    channel.name = value["name"].asString();
     channel.number = channel.id;
-    channel.isRadio = (intFromJsonObject(obj, "is_video") != 1);
-    channel.iconUrl = std::string("http://iptv.kartina.tv") +
-            XBMC->UnknownToUTF8(stringFromJsonObject(obj, "icon"));
+    channel.isRadio = value["is_video"].asInt() != 1;
+    channel.iconUrl = std::string("http://" API_SERVER) +
+            value["icon"].asString();
     channel.streamUrl = std::string("pvr://stream/tv/") + toString(channel.id)
             + ".ts";
-    channel.isProtected = (intFromJsonObject(obj, "protected") == 1);
+    channel.isProtected = value["protected"].asInt() == 1;
 
     return channel;
 }
@@ -434,11 +439,11 @@ PVR_CHANNEL KartinaTVClient::createPvrChannel(
 }
 
 KartinaTVClient::ChannelGroup KartinaTVClient::channelGroupFromJson(
-        json_object *obj)
+        const Json::Value &value)
 {
     ChannelGroup group;
-    group.id = intFromJsonObject(obj, "id");
-    group.name = XBMC->UnknownToUTF8(stringFromJsonObject(obj, "name"));
+    group.id = value["id"].asInt();
+    group.name = value["name"].asString();
 
     return group;
 }
