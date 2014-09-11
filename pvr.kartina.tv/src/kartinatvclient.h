@@ -39,7 +39,6 @@ namespace ADDON {
 class CHelper_libXBMC_addon;
 }
 class CHelper_libXBMC_pvr;
-typedef void CURL;
 struct PVR_CHANNEL;
 struct PVR_CHANNEL_GROUP;
 struct PVR_CHANNEL_GROUP_MEMBER;
@@ -52,13 +51,6 @@ class Value;
 class KartinaTVClient
 {
 public:
-    struct CurlMemoryBlob
-    {
-        CurlMemoryBlob() : buffer(0), size(0) {}
-        char *buffer;
-        size_t size;
-    };
-
     struct ChannelGroup
     {
         int id;
@@ -127,13 +119,12 @@ protected:
     PVR_CHANNEL_GROUP_MEMBER createPvrChannelGroupMember(
             const ChannelGroupMember &member);
 
-    CurlMemoryBlob makeRequest(const char *apiFunction, PostFields &parameters);
+    std::string makeRequest(const char *apiFunction, PostFields &parameters);
     std::string stringifyPostFields(const PostFields &fields);
 
 private:
     ADDON::CHelper_libXBMC_addon *XBMC;
     CHelper_libXBMC_pvr *PVR;
-    CURL *curl;
 
     std::pair<std::string, std::string> sessionId;
     std::string protectCode;

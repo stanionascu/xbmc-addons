@@ -31,34 +31,20 @@
 #include <unistd.h>
 #endif
 
-#include <curl/curl.h>
+#include <platform/sockets/tcp.h>
 #include <json/json.h>
 #include <libXBMC_addon.h>
 #include <libXBMC_pvr.h>
 
 namespace {
-const char *API_SERVER = "http://iptv.kartina.tv/api/json/";
+#define API_SERVER "iptv.kartina.tv"
+#define API_URL "/api/json/"
+const uint16_t API_PORT = 80;
 
 std::string makeApiUrl(const char *functionName)
 {
-    std::string result(API_SERVER);
+    std::string result(API_URL);
     return result + functionName;
-}
-
-size_t curlWriteToMemory(void *buffer, size_t size, size_t nitems, void *outstream)
-{
-    size_t bufferSize = size * nitems;
-    if (!outstream)
-        return bufferSize;
-
-    KartinaTVClient::CurlMemoryBlob *blob = static_cast<KartinaTVClient::CurlMemoryBlob*>(outstream);
-
-    blob->buffer = static_cast<char*>(realloc(blob->buffer, blob->size + bufferSize + 1));
-    memcpy(&(blob->buffer[blob->size]), buffer, bufferSize);
-    blob->size += bufferSize;
-    blob->buffer[blob->size] = 0;
-
-    return bufferSize;
 }
 
 template<class T>
@@ -71,7 +57,7 @@ struct KTVError {
     std::string message;
 };
 
-KTVError checkForError(const char *buffer)
+KTVError checkForError(std::string buffer)
 {
     KTVError error;
     Json::Reader reader;
@@ -108,13 +94,12 @@ UrlData parseUrl(std::string url)
 }
 
 KartinaTVClient::KartinaTVClient(ADDON::CHelper_libXBMC_addon *XBMC, CHelper_libXBMC_pvr *PVR) :
-    XBMC(XBMC), PVR(PVR), curl(0), lastEpgQuery(0, 0)
+    XBMC(XBMC), PVR(PVR), lastEpgQuery(0, 0)
 {
 }
 
 KartinaTVClient::~KartinaTVClient()
 {
-    curl_easy_cleanup(curl);
 }
 
 bool KartinaTVClient::loadChannelGroupsFromCache(ADDON_HANDLE handle,
@@ -198,15 +183,14 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
     if (isProtected)
         parameters.insert(std::make_pair("protect_code", protectCode));
 
-    CurlMemoryBlob reply = makeRequest("get_url", parameters);
-    XBMC->Log(ADDON::LOG_DEBUG, "%s: data: %s", __FUNCTION__,
-              XBMC->UnknownToUTF8(reply.buffer));
+    std::string reply = makeRequest("get_url", parameters);
+    XBMC->Log(ADDON::LOG_DEBUG, KTV_FUNC_INFO ": data: %s", reply.c_str());
 
     KTVError ktvError;
-    if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
+    if (reply.size() != 0 && (ktvError = checkForError(reply)).code == 0) {
         Json::Reader json;
         Json::Value root;
-        json.parse(reply.buffer, root);
+        json.parse(reply, root);
         const char *urlData = root["url"].asCString();
 
         std::list<std::string> urlParams;
@@ -221,12 +205,10 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
         // http/ts
         url = url.replace(0, 7, "http");
 
-        free(reply.buffer);
         return url;
     } else {
         XBMC->Log(ADDON::LOG_ERROR, "Error occured: code %d %s", ktvError.code, ktvError.message.c_str());
         XBMC->Log(ADDON::LOG_ERROR, "Request to API server failed.");
-        free(reply.buffer);
     }
 
     return "";
@@ -244,23 +226,18 @@ bool KartinaTVClient::login(const std::string &user, const std::string &pass)
     PostFields parameters;
     parameters.insert(std::make_pair("login", user));
     parameters.insert(std::make_pair("pass", pass));
-    CurlMemoryBlob reply = makeRequest("login", parameters);
+    std::string reply = makeRequest("login", parameters);
 
     KTVError ktvError;
-    if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
-        XBMC->Log(ADDON::LOG_DEBUG, reply.buffer);
-
+    if (reply.size() != 0 && (ktvError = checkForError(reply)).code == 0) {
         Json::Reader json;
         Json::Value root;
-        json.parse(reply.buffer, root);
+        json.parse(reply, root);
         sessionId.first = root["sid_name"].asString();
         sessionId.second = root["sid"].asString();
-        free(reply.buffer);
     } else {
         XBMC->Log(ADDON::LOG_ERROR, "Error occured: code %d %s", ktvError.code, ktvError.message.c_str());
         XBMC->Log(ADDON::LOG_ERROR, "Request to API server failed.");
-
-        free(reply.buffer);
         return false;
     }
 
@@ -285,14 +262,14 @@ void KartinaTVClient::updateChannelList()
     XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::updateChannelsList()");
 
     PostFields parameters;
-    CurlMemoryBlob reply = makeRequest("channel_list", parameters);
+    std::string reply = makeRequest("channel_list", parameters);
     channelsCache.clear();
 
     KTVError ktvError;
-    if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
+    if (reply.size() != 0 && (ktvError = checkForError(reply)).code == 0) {
         Json::Reader json;
         Json::Value root;
-        json.parse(reply.buffer, root);
+        json.parse(reply, root);
         Json::Value groups = root["groups"];
         for (Json::Value::UInt i = 0; i < groups.size(); ++i) {
             const Json::Value &group = groups[i];
@@ -315,8 +292,6 @@ void KartinaTVClient::updateChannelList()
                   ktvError.code, ktvError.message.c_str());
         XBMC->Log(ADDON::LOG_ERROR, "Request to API server failed.");
     }
-
-    free(reply.buffer);
 }
 
 void KartinaTVClient::updateChannelEpg(time_t start, int hours)
@@ -325,15 +300,15 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
     PostFields parameters;
     parameters.insert(std::make_pair("dtime", toString(start)));
     parameters.insert(std::make_pair("period", toString(hours)));
-    CurlMemoryBlob reply = makeRequest("epg3", parameters);
+    std::string reply = makeRequest("epg3", parameters);
     channelEpgCache.clear();
 
     KTVError ktvError;
 
-    if (reply.size != 0 && (ktvError = checkForError(reply.buffer)).code == 0) {
+    if (reply.size() != 0 && (ktvError = checkForError(reply)).code == 0) {
         Json::Reader json;
         Json::Value root;
-        json.parse(reply.buffer, root);
+        json.parse(reply, root);
         const Json::Value &epg3 = root["epg3"];
         for (Json::Value::UInt i = 0; i < epg3.size(); ++i) {
             const Json::Value &channelEpg = epg3[i];
@@ -401,8 +376,6 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
         XBMC->Log(ADDON::LOG_ERROR, "Error occured: code %d %s", ktvError.code, ktvError.message.c_str());
         XBMC->Log(ADDON::LOG_ERROR, "Request to API server failed.");
     }
-
-    free(reply.buffer);
 }
 
 KartinaTVClient::Channel KartinaTVClient::channelFromJson(const Json::Value &value)
@@ -485,41 +458,69 @@ PVR_CHANNEL_GROUP_MEMBER KartinaTVClient::createPvrChannelGroupMember(
     return pvrMember;
 }
 
-KartinaTVClient::CurlMemoryBlob KartinaTVClient::makeRequest(const char *apiFunction, PostFields &parameters)
+std::string KartinaTVClient::makeRequest(const char *apiFunction, PostFields &parameters)
 {
-    if (!curl)
-        curl = curl_easy_init();
+    XBMC->Log(ADDON::LOG_DEBUG, KTV_FUNC_INFO ": connecting to " API_SERVER "...");
 
-    XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::makeRequest()");
+    PLATFORM::CTcpConnection sock(API_SERVER, API_PORT);
+    if (!sock.Open(30000)) {
+        XBMC->Log(ADDON::LOG_ERROR, KTV_FUNC_INFO ": connection to " API_SERVER " failed!");
+        return std::string();
+    }
 
-    CurlMemoryBlob reply;
-    reply.buffer = static_cast<char*>(malloc(1));
-    reply.size = 0;
-    reply.buffer[0] = 0;
+    XBMC->Log(ADDON::LOG_DEBUG, KTV_FUNC_INFO ": connected...");
 
     const std::string apiCallUrl = makeApiUrl(apiFunction);
-
-    curl_easy_setopt(curl, CURLOPT_URL, apiCallUrl.data());
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlWriteToMemory);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&reply);
-
-    std::string cookiesPath = userPath + "cookies.txt";
-    XBMC->Log(ADDON::LOG_DEBUG, "User path for cookies: %s", cookiesPath.data());
-    curl_easy_setopt(curl, CURLOPT_COOKIEFILE, cookiesPath.data());
-    curl_easy_setopt(curl, CURLOPT_COOKIEJAR, cookiesPath.data());
-
     const std::string postFields = stringifyPostFields(parameters);
+    CStdString request;
+    request += "POST " + apiCallUrl + " HTTP/1.0" + "\r\n" +
+            "Host: " API_SERVER + "\r\n" +
+            "Content-Type: application/x-www-form-urlencoded" + "\r\n" +
+            "Content-Length: " + toString(postFields.size()) + "\r\n";
+    if (!sessionId.second.empty()) {
+        request += "Cookie: " + sessionId.first + "=" + sessionId.second + ";\r\n";
+    }
+    request += "\r\n";
+    request += postFields + "\r\n";
 
     XBMC->Log(ADDON::LOG_DEBUG, postFields.data());
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postFields.data());
 
-    CURLcode result = curl_easy_perform(curl);
+    XBMC->Log(ADDON::LOG_DEBUG, KTV_FUNC_INFO ": sending request %s",
+              request.c_str());
+    sock.Write(request.GetBuf(), request.size());
 
-    XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::makeRequest()");
-    if (result == CURLE_OK)
-        return reply;
+    std::string reply;
+    while (sock.IsOpen()) {
+        char buff[10240];
+        ssize_t bytesRead = sock.Read(buff, sizeof(buff));
+        if (bytesRead > 0) {
+            reply +=  std::string(buff, bytesRead);
+        } else {
+            break;
+        }
+    }
 
-    return CurlMemoryBlob();
+    std::size_t httpDataStart = reply.find("\r\n\r\n");
+    std::string headers = reply.substr(0, httpDataStart);
+    std::string body;
+    if (reply.size() > httpDataStart + 4)
+        body = reply.substr(httpDataStart + 4, std::string::npos);
+
+    XBMC->Log(ADDON::LOG_DEBUG, KTV_FUNC_INFO ": received headers %s",
+              headers.c_str());
+
+#ifdef _DEBUG
+    for (int i = 0; i < body.size(); i += 1000) {
+        XBMC->Log(ADDON::LOG_DEBUG, KTV_FUNC_INFO ": received reply %s",
+                  body.substr(i, i + 1000 < body.size() ? 1000 : std::string::npos));
+    }
+#endif // KTV_DEBUG_REPLY
+
+    sock.Close();
+
+    XBMC->Log(ADDON::LOG_DEBUG, KTV_FUNC_INFO ": connection closed.");
+
+    return body;
 }
 
 std::string KartinaTVClient::stringifyPostFields(const PostFields &fields)
