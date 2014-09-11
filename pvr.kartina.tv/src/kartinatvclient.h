@@ -29,6 +29,12 @@
 #include <xbmc_addon_types.h>
 #include <time.h>
 
+#ifdef _MSC_VER
+#   define KTV_FUNC_INFO __FUNCTION__
+#else
+#   define KTV_FUNC_INFO __PRETTY_FUNCTION__
+#endif
+
 namespace ADDON {
 class CHelper_libXBMC_addon;
 }
