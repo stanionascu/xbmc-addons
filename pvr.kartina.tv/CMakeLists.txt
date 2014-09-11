@@ -1,8 +1,6 @@
 project(XBMC_KartinaTV)
 cmake_minimum_required(VERSION 2.8)
 
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/modules")
-
 if(NOT DEFINED XbmcPvrAddons_DIR)
     message(FATAL_ERROR "Cannot continue without XbmcPvrAddons_DIR")
 endif()
