@@ -32,7 +32,7 @@ endif()
 
 file(GLOB_RECURSE SRC_LIST "./src/" "./src/*")
 
-configure_file("./src/addons/addon.xml.in" "./src/addons/addon.xml")
+configure_file(${PROJECT_SOURCE_DIR}/addon/addon.xml.in "./src/addons/addon.xml")
 
 add_library(${PROJECT_NAME} SHARED ${SRC_LIST})
 
