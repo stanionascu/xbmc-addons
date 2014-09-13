@@ -25,7 +25,6 @@
 #include <libXBMC_pvr.h>
 #include <libXBMC_gui.h>
 #include <platform/util/util.h>
-#include <stdio.h>
 
 #include "kartinatvclient.h"
 
