@@ -47,9 +47,6 @@ std::string makeApiUrl(const char *functionName)
     return result + functionName;
 }
 
-template<class T>
-std::string toString(T any) { std::stringstream stream; stream << any; return stream.str(); }
-
 struct KTVError {
     KTVError() : code(0) { }
 
@@ -179,7 +176,7 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
             isProtected = true;
     }
     PostFields parameters;
-    parameters.insert(std::make_pair("cid", toString(channel.iUniqueId)));
+    parameters.insert(std::make_pair("cid", std::to_string(channel.iUniqueId)));
     if (isProtected)
         parameters.insert(std::make_pair("protect_code", protectCode));
 
@@ -298,8 +295,8 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
 {
     XBMC->Log(ADDON::LOG_DEBUG, "KartinaTVClient::updateChannelEpg start=%d hours=%d", start, hours);
     PostFields parameters;
-    parameters.insert(std::make_pair("dtime", toString(start)));
-    parameters.insert(std::make_pair("period", toString(hours)));
+    parameters.insert(std::make_pair("dtime", std::to_string(start)));
+    parameters.insert(std::make_pair("period", std::to_string(hours)));
     std::string reply = makeRequest("epg3", parameters);
     channelEpgCache.clear();
 
@@ -387,7 +384,8 @@ KartinaTVClient::Channel KartinaTVClient::channelFromJson(const Json::Value &val
     channel.isRadio = value["is_video"].asInt() != 1;
     channel.iconUrl = std::string("http://" API_SERVER) +
             value["icon"].asString();
-    channel.streamUrl = std::string("pvr://stream/tv/") + toString(channel.id)
+    channel.streamUrl = std::string("pvr://stream/tv/") +
+            std::to_string(channel.id)
             + ".ts";
     channel.isProtected = value["protected"].asInt() == 1;
 
@@ -476,7 +474,7 @@ std::string KartinaTVClient::makeRequest(const char *apiFunction, PostFields &pa
     request += "POST " + apiCallUrl + " HTTP/1.0" + "\r\n" +
             "Host: " API_SERVER + "\r\n" +
             "Content-Type: application/x-www-form-urlencoded" + "\r\n" +
-            "Content-Length: " + toString(postFields.size()) + "\r\n";
+            "Content-Length: " + std::to_string(postFields.size()) + "\r\n";
     if (!sessionId.second.empty()) {
         request += "Cookie: " + sessionId.first + "=" + sessionId.second + ";\r\n";
     }
