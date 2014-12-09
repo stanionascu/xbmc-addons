@@ -102,10 +102,9 @@ KartinaTVClient::~KartinaTVClient()
 bool KartinaTVClient::loadChannelGroupsFromCache(ADDON_HANDLE handle,
                                                  bool bRadio)
 {
-    std::list<ChannelGroup>::const_iterator it = channelGroupsCache.begin();
-    for (; it != channelGroupsCache.end(); ++it) {
+    for (const auto &group: channelGroupsCache) {
         if (!bRadio) {
-            PVR_CHANNEL_GROUP channelGroup = createPvrChannelGroup(*it);
+            PVR_CHANNEL_GROUP channelGroup = createPvrChannelGroup(group);
             PVR->TransferChannelGroup(handle, &channelGroup);
         }
     }
@@ -117,11 +116,10 @@ bool KartinaTVClient::loadChannelGroupMembersFromCache(
         ADDON_HANDLE handle,
         const PVR_CHANNEL_GROUP &group)
 {
-    std::list<ChannelGroupMember>::const_iterator it =
-            channelGroupMembersCache.begin();
-    for (; it != channelGroupMembersCache.end(); ++it) {
-        if (strcmp(group.strGroupName, (*it).name.c_str()) == 0) {
-            PVR_CHANNEL_GROUP_MEMBER member = createPvrChannelGroupMember(*it);
+    for (const auto &groupMem: channelGroupMembersCache) {
+        if (groupMem.name == group.strGroupName) {
+            PVR_CHANNEL_GROUP_MEMBER member =
+                    createPvrChannelGroupMember(groupMem);
             PVR->TransferChannelGroupMember(handle, &member);
         }
     }
@@ -134,10 +132,9 @@ bool KartinaTVClient::loadChannelsFromCache(ADDON_HANDLE handle, bool bRadio)
     if (channelsCache.empty())
         updateChannelList();
 
-    std::list<Channel>::const_iterator it = channelsCache.begin();
-    for (; it != channelsCache.end(); ++it) {
-        if ((*it).isRadio == bRadio) {
-            PVR_CHANNEL channel = createPvrChannel(*it);
+    for (const auto &c: channelsCache) {
+        if (c.isRadio == bRadio) {
+            PVR_CHANNEL channel = createPvrChannel(c);
             PVR->TransferChannelEntry(handle, &channel);
         }
     }
@@ -155,12 +152,10 @@ bool KartinaTVClient::loadEpgFromCache(ADDON_HANDLE handle, const PVR_CHANNEL &c
         lastEpgQuery = std::make_pair(start, end);
     }
 
-    if (channelEpgCache.count(channel.iUniqueId) > 0) {
-        const std::list<EPG_TAG*> &epg = channelEpgCache.at(channel.iUniqueId);
-        std::list<EPG_TAG*>::const_iterator it = epg.begin();
-        for (; it != epg.end(); ++it) {
-            PVR->TransferEpgEntry(handle, *it);
-        }
+    auto epg = channelEpgCache.find(channel.iUniqueId);
+    if (epg != channelEpgCache.cend()) {
+        for (const auto &entry: epg->second)
+            PVR->TransferEpgEntry(handle, entry);
     }
     return true;
 }
@@ -170,9 +165,8 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
     XBMC->Log(ADDON::LOG_DEBUG, "void KartinaTVClient::requestStreamUrl()");
 
     bool isProtected = false;
-    std::list<Channel>::const_iterator it = channelsCache.begin();
-    for (; it != channelsCache.end(); ++ it ) {
-        if (it->id == channel.iUniqueId && it->isProtected)
+    for (const auto &c: channelsCache) {
+        if (c.id == channel.iUniqueId && c.isProtected)
             isProtected = true;
     }
     PostFields parameters;
@@ -190,7 +184,7 @@ std::string KartinaTVClient::requestStreamUrl(const PVR_CHANNEL &channel)
         json.parse(reply, root);
         const char *urlData = root["url"].asCString();
 
-        std::list<std::string> urlParams;
+        std::vector<std::string> urlParams;
         std::stringstream stream(urlData);
         std::string param;
         while (stream >> param) {
@@ -315,9 +309,6 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
             else
                 channelId = std::stoi(channelEpg["id"].asString());
 
-            if (channelEpgCache.count(channelId) == 0)
-                channelEpgCache.insert(std::make_pair(channelId, std::list<EPG_TAG*>()));
-
             const Json::Value &epg = channelEpg["epg"];
             EPG_TAG *lastEntry = NULL;
             if (!epg.isNull()) {
@@ -361,7 +352,7 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
                     tag->strTitle = _strdup(title.c_str());
                     tag->strPlot = _strdup(plot.c_str());
 
-                    channelEpgCache.at(channelId).push_back(tag);
+                    channelEpgCache[channelId].push_back(tag);
                     lastEntry = tag;
                 }
             }
@@ -373,6 +364,11 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
         XBMC->Log(ADDON::LOG_ERROR, "Error occured: code %d %s", ktvError.code, ktvError.message.c_str());
         XBMC->Log(ADDON::LOG_ERROR, "Request to API server failed.");
     }
+}
+
+void KartinaTVClient::updateChannelEpg(int channelId, time_t start, time_t end)
+{
+    channelEpgCache.erase(channelId);
 }
 
 KartinaTVClient::Channel KartinaTVClient::channelFromJson(const Json::Value &value)
@@ -524,11 +520,10 @@ std::string KartinaTVClient::makeRequest(const char *apiFunction, PostFields &pa
 std::string KartinaTVClient::stringifyPostFields(const PostFields &fields)
 {
     std::string postFields = "";
-    PostFields::const_iterator it = fields.begin();
-    for (; it != fields.end(); ++it) {
+    for (const auto &f: fields) {
         if (postFields.length() > 0)
             postFields += "&";
-        postFields += it->first + "=" + it->second;
+        postFields += f.first + "=" + f.second;
     }
 
     return postFields;

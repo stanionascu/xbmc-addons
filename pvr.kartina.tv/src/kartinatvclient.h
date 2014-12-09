@@ -25,7 +25,7 @@
 #include <cstddef>
 #include <map>
 #include <string>
-#include <list>
+#include <vector>
 #include <xbmc_addon_types.h>
 #include <time.h>
 
@@ -107,6 +107,7 @@ public:
 protected:
     void updateChannelList();
     void updateChannelEpg(time_t start, int hours);
+    void updateChannelEpg(int channelId, time_t start, time_t end);
 
     Channel channelFromJson(const Json::Value &value);
     PVR_CHANNEL createPvrChannel(const Channel &channel);
@@ -120,7 +121,7 @@ protected:
             const ChannelGroupMember &member);
 
     std::string makeRequest(const char *apiFunction, PostFields &parameters);
-    std::string stringifyPostFields(const PostFields &fields);
+    static std::string stringifyPostFields(const PostFields &fields);
 
 private:
     ADDON::CHelper_libXBMC_addon *XBMC;
@@ -129,10 +130,10 @@ private:
     std::pair<std::string, std::string> sessionId;
     std::string protectCode;
 
-    std::list<Channel> channelsCache;
-    std::list<ChannelGroup> channelGroupsCache;
-    std::list<ChannelGroupMember> channelGroupMembersCache;
-    std::map<int, std::list<EPG_TAG*> > channelEpgCache;
+    std::vector<Channel> channelsCache;
+    std::vector<ChannelGroup> channelGroupsCache;
+    std::vector<ChannelGroupMember> channelGroupMembersCache;
+    std::map<int, std::vector<EPG_TAG*>> channelEpgCache;
 
     std::pair<time_t, time_t> lastEpgQuery;
 
