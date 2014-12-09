@@ -40,6 +40,7 @@ namespace {
 #define API_SERVER "iptv.kartina.tv"
 #define API_URL "/api/json/"
 const uint16_t API_PORT = 80;
+const uint32_t REQ_TIME_LIMIT = 251000;
 
 std::string makeApiUrl(const char *functionName)
 {
@@ -513,6 +514,7 @@ std::string KartinaTVClient::makeRequest(const char *apiFunction, PostFields &pa
     sock.Close();
 
     XBMC->Log(ADDON::LOG_DEBUG, KTV_FUNC_INFO ": connection closed.");
+    usleep(REQ_TIME_LIMIT);
 
     return body;
 }
