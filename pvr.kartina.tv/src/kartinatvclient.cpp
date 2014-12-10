@@ -30,6 +30,7 @@
 #else
 #include <unistd.h>
 #endif
+#include <ctime>
 
 #include <platform/sockets/tcp.h>
 #include <json/json.h>
@@ -98,6 +99,10 @@ KartinaTVClient::KartinaTVClient(ADDON::CHelper_libXBMC_addon *XBMC, CHelper_lib
 
 KartinaTVClient::~KartinaTVClient()
 {
+    for (auto &c: channelEpgCache) {
+        for (auto &t: c.second)
+            delete t;
+    }
 }
 
 bool KartinaTVClient::loadChannelGroupsFromCache(ADDON_HANDLE handle,
@@ -145,14 +150,12 @@ bool KartinaTVClient::loadChannelsFromCache(ADDON_HANDLE handle, bool bRadio)
 
 bool KartinaTVClient::loadEpgFromCache(ADDON_HANDLE handle, const PVR_CHANNEL &channel, time_t start, time_t end)
 {
-    XBMC->Log(ADDON::LOG_DEBUG, "KartinaTVClient::loadEpgFromCache %d", start);
+    XBMC->Log(ADDON::LOG_DEBUG, "KartinaTVClient::loadEpgFromCache %d %d %d",
+              channel.iUniqueId,
+              start,
+              end);
 
-    // if new query is at least 60s in the future, update cache.
-    if ((start - lastEpgQuery.first) > 60) {
-        updateChannelEpg(start + 3600 * 18, (end - start)/3600 + 3);
-        lastEpgQuery = std::make_pair(start, end);
-    }
-
+    updateChannelEpg(channel.iUniqueId, start, end);
     auto epg = channelEpgCache.find(channel.iUniqueId);
     if (epg != channelEpgCache.cend()) {
         for (const auto &entry: epg->second)
@@ -369,6 +372,80 @@ void KartinaTVClient::updateChannelEpg(time_t start, int hours)
 
 void KartinaTVClient::updateChannelEpg(int channelId, time_t start, time_t end)
 {
+    clearChannelEpg(channelId);
+
+    char buf[32] = "";
+    while (start <= end) {
+        memset(&buf, 0, sizeof(buf));
+        tm *t = std::localtime(&start);
+        std::strftime(buf, 32, "%d%m%y", t);
+        std::string day = buf;
+        PostFields req = {
+            { "cid", std::to_string(channelId) },
+            { "day", day }
+        };
+        std::string reply = makeRequest("/epg", req);
+        KTVError ktvError;
+        if (reply.size() != 0 && (ktvError = checkForError(reply)).code == 0) {
+            Json::Reader json;
+            Json::Value root;
+            json.parse(reply, root);
+            const Json::Value &epg = root["epg"];
+            int showId = 1;
+            EPG_TAG *lastTag = NULL;
+            for (Json::Value::UInt j = 0; j < epg.size(); ++ j) {
+                const Json::Value &show = epg[j];
+                EPG_TAG *tag = new EPG_TAG;
+                memset(tag, 0, sizeof(EPG_TAG));
+                tag->iChannelNumber = channelId;
+                tag->iUniqueBroadcastId = channelId * 10000 + showId;
+                tag->firstAired = 0;
+                const auto &ut_start = show["ut_start"];
+                if (ut_start.isInt())
+                    tag->startTime = ut_start.asInt();
+                else
+                    tag->startTime = std::stoi(ut_start.asString());
+                tag->endTime = tag->startTime + 300;
+                if (lastTag != NULL)
+                    lastTag->endTime = tag->startTime;
+                std::string longTitle = show["progname"].asString();
+                std::istringstream titleStream(longTitle);
+                std::vector<std::string> titleLines;
+                while (!titleStream.eof()) {
+                    std::string line;
+                    std::getline(titleStream, line);
+                    titleLines.push_back(line);
+                }
+
+                std::string title, plot;
+                if (titleLines.size() > 0)
+                    title = titleLines.at(0);
+                else
+                    title = longTitle;
+
+                if (titleLines.size() > 1) {
+                    for (unsigned int i = 1; i < titleLines.size(); ++i) {
+                        plot += " " + titleLines.at(i);
+                    }
+                }
+
+                tag->strTitle = _strdup(title.c_str());
+                tag->strPlot = _strdup(plot.c_str());
+
+                channelEpgCache[channelId].push_back(tag);
+                lastTag = tag;
+                ++ showId;
+            }
+        }
+        t->tm_mday += 1;
+        start = mktime(t);
+    }
+}
+
+void KartinaTVClient::clearChannelEpg(int channelId)
+{
+    for (auto c: channelEpgCache[channelId])
+        delete c;
     channelEpgCache.erase(channelId);
 }
 

@@ -108,6 +108,7 @@ protected:
     void updateChannelList();
     void updateChannelEpg(time_t start, int hours);
     void updateChannelEpg(int channelId, time_t start, time_t end);
+    void clearChannelEpg(int channelId);
 
     Channel channelFromJson(const Json::Value &value);
     PVR_CHANNEL createPvrChannel(const Channel &channel);
