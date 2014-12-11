@@ -30,11 +30,12 @@ if(WIN32)
     )
 endif()
 
-file(GLOB_RECURSE SRC_LIST "./src/" "./src/*")
-
 configure_file(${PROJECT_SOURCE_DIR}/addon/addon.xml.in "./src/addons/addon.xml")
 
-add_library(${PROJECT_NAME} SHARED ${SRC_LIST})
+add_library(${PROJECT_NAME} SHARED
+    src/kartinatvclient.cpp
+    src/client.cpp
+)
 
 if(WIN32)
     if(MSVC)
