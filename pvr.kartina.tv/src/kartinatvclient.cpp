@@ -155,7 +155,9 @@ bool KartinaTVClient::loadEpgFromCache(ADDON_HANDLE handle, const PVR_CHANNEL &c
               start,
               end);
 
-    updateChannelEpg(channel.iUniqueId, start, end);
+
+    if (!channel.bIsRadio)
+        updateChannelEpg(channel.iUniqueId, start, end);
     auto epg = channelEpgCache.find(channel.iUniqueId);
     if (epg != channelEpgCache.cend()) {
         for (const auto &entry: epg->second)
