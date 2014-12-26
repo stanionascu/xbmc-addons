@@ -147,7 +147,7 @@ ADDON_STATUS ADDON_SetSetting(const char *settingName, const void *settingValue)
 {
     if (strcmp(settingName, "username") == 0 ||
             strcmp(settingName, "password") == 0)
-        return ADDON_STATUS_NEED_RESTART;
+        return ADDON_STATUS_NEED_SETTINGS;
 
     return ADDON_STATUS_OK;
 }
