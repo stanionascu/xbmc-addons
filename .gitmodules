@@ -1,0 +1,3 @@
+[submodule "pvr.kartina.tv"]
+	path = pvr.kartina.tv
+	url = https://github.com/stanionascu/pvr.kartina.tv.git
